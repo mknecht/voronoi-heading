@@ -1,5 +1,6 @@
 /** Modified gist from Mike Bostock: http://bl.ocks.org/mbostock/4060366 */
 (function(w, $, d3) {
+    "use strict";
     $(function() {
 	var $w = $(w);
 
@@ -10,7 +11,8 @@
 	    // ray-casting algorithm based on
 	    // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
 	    
-	    var x = point[0], y = point[1];
+	    var x = point[0];
+	    var y = point[1];
 	    
 	    var inside = false;
 	    for (var i = 0, j = this.length - 1; i < this.length; j = i++) {
@@ -18,10 +20,9 @@
 		var xj = this[j][0], yj = this[j][1];
 		
 		var intersect = ((yi > y) != (yj > y))
-		    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+		    && (x < ((xj - xi) * (y - yi) / (yj - yi) + xi));
 		if (intersect) inside = !inside;
 	    }
-	    
 	    return inside;
 	};
 
@@ -51,11 +52,42 @@
 	function initVoronoiRect() {
 	    var width = $w.width();
 	    var height = 200;
+	    var colors = [
+		'rgb(197,27,125)',
+		'rgb(222,119,174)',
+		'rgb(241,182,218)',
+		'rgb(253,224,239)',
+		'rgb(230,245,208)',
+		'rgb(184,225,134)',
+		'rgb(127,188,65)',
+		'rgb(77,146,33)'
+	    ]
+
+	    var existingVertices = d3.set();
 	    var verticesData = d3.range(500).map(function() {
-		return [Math.random() * width, Math.random() * height];
+		var vertex;
+		while (existingVertices.has(vertex = [Math.random() * width, Math.random() * height])) {
+		}
+		existingVertices.add(vertex)
+		return vertex;
 	    });
 	    var c = d3.scale.category10();
-	    var voronoi = d3.geom.voronoi().clipExtent([0, 0], [width, height]);
+	    var voronoiFunc = d3.geom.voronoi().clipExtent([0, 0], [width, height]);
+	    function voronoi(data) {
+		// Voronoi function always produces one polygon
+		// on the right border
+		// with a vertex [undefined, NaN], which messes up the
+		// contains-calculation.
+		// Here, we get rid of it.
+		return voronoiFunc(data).filter(function(p) {
+		    return p.every(function(v) {
+			return (
+			    v[0] !== undefined && v[0] !== NaN
+				&& v[1] !== undefined && v[1] !== NaN
+			);
+		    });
+		});
+	    }
 	    var svg = d3.select('div#voronoi')
 		.append('svg')
 		.attr('width', width)
@@ -68,18 +100,19 @@
 	    path.enter()
 		.append('path')
 		.attr("d", polygon)
-		.attr("c", function(p, i) { return i % 8; })
-		.attr("class", function(p, i) { return "q" + (i % 8); });
-
+		.attr("c", function(d, i) { return i % 8; })
+		.style("fill", function(d, i) { return colors[i % 8]; });
 	    path.order();
 
 	    function polygon(d) {
 		return "M" + d.join("L") + "Z";
 	    }
 
-	    return function(point) {
+	    return function(points) {
 		var filtered = path.filter(function(d, i) {
-		    return d3.geom.polygon(d).contains(point);
+		    return points.filter(function(point) {
+			return d3.geom.polygon(d).contains(point);
+		    }).length != 0;
 		});
 		filtered
 		    .transition()
@@ -88,8 +121,12 @@
 			"fill",
 			function(d) {
 			    return d3.interpolateRgb(
-				"blue",
-				"black" // d3.select(this).attr("c")
+				"black",
+				// We don't return to the original color.
+				// We'd need to store it — one animation
+				// could be started in the middle of another.
+				// So, I don't care.
+				colors[parseInt(Math.random() * colors.length)]
 			    );
 			}
 		    );
@@ -98,6 +135,17 @@
 
 	var fillPolygons = initVoronoiRect();
 	initCanvas();
-	fillPolygons([Math.random() * $w.width(), Math.random() * 200]);
+	fillPolygons([
+	    [Math.random() * $w.width(), Math.random() * 200],
+	    [Math.random() * $w.width(), Math.random() * 200],
+	    [Math.random() * $w.width(), Math.random() * 200],
+	    [Math.random() * $w.width(), Math.random() * 200],
+	    [Math.random() * $w.width(), Math.random() * 200],
+	    [Math.random() * $w.width(), Math.random() * 200],
+	    [Math.random() * $w.width(), Math.random() * 200],
+	    [Math.random() * $w.width(), Math.random() * 200],
+	    [Math.random() * $w.width(), Math.random() * 200],
+	    [Math.random() * $w.width(), Math.random() * 200]
+	]);
     });
 })(window, jQuery, d3);
