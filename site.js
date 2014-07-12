@@ -1,10 +1,10 @@
 /** Modified gist from Mike Bostock: http://bl.ocks.org/mbostock/4060366 */
-(function(w, $, d3) {
+(function(w, $, d3, settings) {
     "use strict";
     $(function() {
 	var $w = $(w);
 	var canvasDimensions = 20;
-	var voronoiHeight = 100;
+	var voronoiHeight = settings.voronoiHeight;
 	var voronoiVMargin = (voronoiHeight / 10);
 	var voronoiEffectiveHeight = voronoiHeight - 2 * voronoiVMargin;
 	var voronoiPixel = (voronoiEffectiveHeight / canvasDimensions) | 0;
@@ -83,7 +83,7 @@
 	    ]
 
 	    var existingVertices = d3.set();
-	    var verticesData = d3.range(2000).map(function() {
+	    var verticesData = d3.range(settings.polygonCount).map(function() {
 		var vertex;
 		while (existingVertices.has(vertex = [Math.random() * width, Math.random() * height])) {
 		}
@@ -137,7 +137,7 @@
 			return d3.geom.polygon(d).contains(point);
 		    })
 		    .transition()
-		    .duration(2500)
+		    .duration(settings.animationDuration)
 		    .styleTween(
 			"fill",
 			function(d) {
@@ -218,4 +218,8 @@
 	);
 	$('input').focus();
     });
-})(window, jQuery, d3);
+})(window, jQuery, d3, {
+    animationDuration: 3000,
+    polygonCount: 8000,
+    voronoiHeight: 100
+});
