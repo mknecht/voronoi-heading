@@ -3,6 +3,7 @@
     "use strict";
     $(function() {
 	var $w = $(w);
+	var canvasDimensions = 20;
 
 	d3.geom.polygon.prototype.contains = function (point) {
 	    // function from https://github.com/substack/point-in-polygon
@@ -26,27 +27,19 @@
 	    return inside;
 	};
 
-	function initCanvas() {
-	    var canvas = $('canvas');
-	    var dimensions = 20;
-	    canvas
+	function initCanvas($canvas) {
+	    var dimensions = canvasDimensions;
+	    $canvas
 		.width(dimensions)
 		.height(dimensions)
 		.attr('width', dimensions)
 		.attr('height', dimensions);
-	    var ctx = canvas[0].getContext('2d');
+	    var ctx = $canvas[0].getContext('2d');
 	    ctx.font = '15pt bold sans-serif';
-	    $('input').keypress(function(e) {
-		if (e.which === 13) {
-		    $(this).val('');
-		    ctx.clearRect(0, 0, dimensions, dimensions);
-		}
-		if (e.which > 32) {
-		    ctx.clearRect(0, 0, dimensions, dimensions);
-		    ctx.fillText(e.key, 0, 15);
-		}
-	    });
-;
+	    return {
+		drawCharacter: function(c) { ctx.fillText(c, 0, 15); },
+		clear: function() { ctx.clearRect(0, 0, dimensions, dimensions); }
+	    }
 	};
 
 	function initVoronoiRect() {
@@ -64,7 +57,7 @@
 	    ]
 
 	    var existingVertices = d3.set();
-	    var verticesData = d3.range(500).map(function() {
+	    var verticesData = d3.range(2500).map(function() {
 		var vertex;
 		while (existingVertices.has(vertex = [Math.random() * width, Math.random() * height])) {
 		}
@@ -73,6 +66,7 @@
 	    });
 	    var c = d3.scale.category10();
 	    var voronoiFunc = d3.geom.voronoi().clipExtent([0, 0], [width, height]);
+
 	    function voronoi(data) {
 		// Voronoi function always produces one polygon
 		// on the right border
@@ -88,6 +82,7 @@
 		    });
 		});
 	    }
+
 	    var svg = d3.select('div#voronoi')
 		.append('svg')
 		.attr('width', width)
@@ -108,13 +103,13 @@
 		return "M" + d.join("L") + "Z";
 	    }
 
-	    return function(points) {
-		var filtered = path.filter(function(d, i) {
-		    return points.filter(function(point) {
+	    return function(point) {
+		/** Animates a color change on every polygon that contains
+		    one of the given points. */
+		path
+		    .filter(function(d, i) {
 			return d3.geom.polygon(d).contains(point);
-		    }).length != 0;
-		});
-		filtered
+		    })
 		    .transition()
 		    .duration(1500)
 		    .styleTween(
@@ -133,19 +128,62 @@
 	    }
 	}
 
-	var fillPolygons = initVoronoiRect();
-	initCanvas();
-	fillPolygons([
-	    [Math.random() * $w.width(), Math.random() * 200],
-	    [Math.random() * $w.width(), Math.random() * 200],
-	    [Math.random() * $w.width(), Math.random() * 200],
-	    [Math.random() * $w.width(), Math.random() * 200],
-	    [Math.random() * $w.width(), Math.random() * 200],
-	    [Math.random() * $w.width(), Math.random() * 200],
-	    [Math.random() * $w.width(), Math.random() * 200],
-	    [Math.random() * $w.width(), Math.random() * 200],
-	    [Math.random() * $w.width(), Math.random() * 200],
-	    [Math.random() * $w.width(), Math.random() * 200]
-	]);
+	function initTextfield(resetFunc, newCharacterFunc) {
+	    $('input').keypress(function(e) {
+		if (e.which === 13) {
+		    $(this).val('');
+		    resetFunc()
+		}
+		if (e.which > 32) {
+		    newCharacterFunc(String.fromCharCode(e.which));
+		}
+	    });
+	}
+
+	function rasterCanvas() {
+	    var x,y;
+	    var points = [];
+	    var $canvas = $('canvas#raster');
+	    var ctx = $canvas[0].getContext('2d');
+	    var imgData = ctx.getImageData(0, 0, canvasDimensions, canvasDimensions);
+	    for (var i = 0; i < imgData.data.length; i += 4) {
+		if (imgData.data[i + 3] > 0 && imgData.data[i] < 255) {
+		    // Text is black, so testing one component suffices.
+		    points.push([
+			Math.floor(Math.floor(i/4) % imgData.width),
+			Math.floor(Math.floor(i/4) / imgData.height)
+		    ]);
+		}
+	    }
+	    return points;
+	}
+
+	function toVoronoiCoord(canvasPoint) {
+	    return [
+		200 + canvasPoint[0] * 10,
+		canvasPoint[1] * 10
+	    ]
+	}
+	function drawCircleAtPoints(points) {
+	    d3.select('svg').selectAll('circle')
+		.data(points)
+		.enter().append('circle')
+		.attr('cx', function(d) { return d[0]; })
+		.attr('cy', function(d) { return d[1]; })
+		.attr('r', 1)
+		.attr('fill', 'transparent')
+		.attr('stroke', 'blue');
+	}
+	var fillPolygonAtPoint = initVoronoiRect();
+	var canvas = initCanvas($('canvas#raster'));
+	initTextfield(
+	    function() { canvas.clear(); },
+	    function(c) { 
+		canvas.clear();
+		canvas.drawCharacter(c);
+		rasterCanvas().map(toVoronoiCoord).forEach(fillPolygonAtPoint);
+	    }
+	);
+	$('input').focus();
     });
 })(window, jQuery, d3);
