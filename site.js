@@ -4,6 +4,32 @@
     $(function() {
 	var $w = $(w);
 	var canvasDimensions = 20;
+	var voronoiHeight = 100;
+	var voronoiVMargin = (voronoiHeight / 10);
+	var voronoiEffectiveHeight = voronoiHeight - 2 * voronoiVMargin;
+	var voronoiPixel = (voronoiEffectiveHeight / canvasDimensions) | 0;
+	var voronoiHMargin = (($w.width() % voronoiEffectiveHeight) / 2) | 0;
+	var voronoiCharDimension = voronoiEffectiveHeight;
+	var voronoiChars = ($w.width() / voronoiCharDimension) | 0;
+	$('span#numchars').text(voronoiChars);
+
+	(function($) {
+	    $.fn.getCursorPosition = function() {
+		var input = this.get(0);
+		if (!input) return; // No (input) element found
+		if ('selectionStart' in input) {
+		    // Standard-compliant browsers
+		    return input.selectionStart;
+		} else if (document.selection) {
+		    // IE
+		    input.focus();
+		    var sel = document.selection.createRange();
+		    var selLen = document.selection.createRange().text.length;
+		    sel.moveStart('character', -input.value.length);
+		    return sel.text.length - selLen;
+		}
+	    }
+	})($);
 
 	d3.geom.polygon.prototype.contains = function (point) {
 	    // function from https://github.com/substack/point-in-polygon
@@ -44,7 +70,7 @@
 
 	function initVoronoiRect() {
 	    var width = $w.width();
-	    var height = 200;
+	    var height = voronoiHeight;
 	    var colors = [
 		'rgb(197,27,125)',
 		'rgb(222,119,174)',
@@ -57,7 +83,7 @@
 	    ]
 
 	    var existingVertices = d3.set();
-	    var verticesData = d3.range(2500).map(function() {
+	    var verticesData = d3.range(2000).map(function() {
 		var vertex;
 		while (existingVertices.has(vertex = [Math.random() * width, Math.random() * height])) {
 		}
@@ -111,7 +137,7 @@
 			return d3.geom.polygon(d).contains(point);
 		    })
 		    .transition()
-		    .duration(1500)
+		    .duration(2500)
 		    .styleTween(
 			"fill",
 			function(d) {
@@ -129,15 +155,17 @@
 	}
 
 	function initTextfield(resetFunc, newCharacterFunc) {
-	    $('input').keypress(function(e) {
-		if (e.which === 13) {
-		    $(this).val('');
-		    resetFunc()
-		}
-		if (e.which > 32) {
-		    newCharacterFunc(String.fromCharCode(e.which));
-		}
-	    });
+	    $('input')
+		.attr('maxLength', voronoiChars)
+		.keypress(function(e) {
+		    if (e.which === 13) {
+			$(this).val('');
+			resetFunc()
+		    }
+		    if (e.which > 32) {
+			newCharacterFunc(String.fromCharCode(e.which));
+		    }
+		});
 	}
 
 	function rasterCanvas() {
@@ -158,11 +186,15 @@
 	    return points;
 	}
 
-	function toVoronoiCoord(canvasPoint) {
-	    return [
-		200 + canvasPoint[0] * 10,
-		canvasPoint[1] * 10
-	    ]
+	function toVoronoiCoord(position) {
+	    console.log(position);
+	    function toVoronoiCoordAtPosition(canvasPoint) {
+		return [
+		    voronoiHMargin + position * voronoiCharDimension + canvasPoint[0] * voronoiPixel,
+		    voronoiVMargin + canvasPoint[1] * voronoiPixel
+		];
+	    }
+	    return toVoronoiCoordAtPosition;
 	}
 	function drawCircleAtPoints(points) {
 	    d3.select('svg').selectAll('circle')
@@ -181,7 +213,7 @@
 	    function(c) { 
 		canvas.clear();
 		canvas.drawCharacter(c);
-		rasterCanvas().map(toVoronoiCoord).forEach(fillPolygonAtPoint);
+		rasterCanvas().map(toVoronoiCoord($('input').getCursorPosition())).forEach(fillPolygonAtPoint);
 	    }
 	);
 	$('input').focus();
