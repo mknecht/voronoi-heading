@@ -1,2 +1,1 @@
-newtonian-letters
-=================
+Text is rendered on a Voronoi diagram, using D3 and Foundation. Used the visuals for my application at MixBit, but technology-wise it's about learning D3.
