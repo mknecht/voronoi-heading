@@ -4,13 +4,14 @@
 	init: function(settings) {
 	    var $w = $(w);
 	    var canvasDimensions = 30;
+	    var voronoiWidth = $w.width();
 	    var voronoiHeight = settings.voronoiHeight;
 	    var voronoiVMargin = (voronoiHeight / 10);
 	    var voronoiEffectiveHeight = voronoiHeight - 2 * voronoiVMargin;
 	    var voronoiPixel = (voronoiEffectiveHeight / canvasDimensions) | 0;
-	    var voronoiHMargin = (($w.width() % voronoiEffectiveHeight) / 2) | 0;
+	    var voronoiHMargin = ((voronoiWidth % voronoiEffectiveHeight) / 2) | 0;
 	    var voronoiCharDimension = voronoiEffectiveHeight;
-	    var voronoiChars = ($w.width() / voronoiCharDimension) | 0;
+	    var voronoiChars = (voronoiWidth / voronoiCharDimension) | 0;
 	    $('span#numchars').text(voronoiChars);
 
 	    (function($) {
@@ -82,6 +83,80 @@
 		    'rgb(77,146,33)'
 		]
 
+		function buildIndex(polygons) {
+		    var index = [];
+		    var rasterDim = ((voronoiWidth * voronoiHeight) / settings.polygonCount) | 0;
+		    var cellsPerRow = Math.ceil(voronoiWidth / rasterDim);
+		    var cellsPerCol = Math.ceil(voronoiHeight / rasterDim);
+		    function to1D(coord) {
+			return coord[0] + coord[1] * cellsPerRow
+		    }
+		    function rasterCoord(point) {
+			return [
+			    (Math.min(cellsPerRow, Math.max(0, (point[0] / rasterDim) | 0))),
+			    (Math.min(cellsPerCol, Math.max(0, (point[1] / rasterDim) | 0)))
+			];
+		    }
+		    polygons[0].forEach(function(polygon) {
+			var arrayIdx = to1D(rasterCoord(polygon.__data__.point));
+			if (index[arrayIdx] === undefined) {
+			    index[arrayIdx] = [];
+			}
+			index[arrayIdx].push(polygon);
+		    });
+		    return function(point) {
+			var center = rasterCoord(point);
+
+			function searchInCircles(radius) {
+			    var result = [];
+			    var hLen = radius * 2 + 1;
+			    var vLen = radius * 2 - 1;
+			    var numCells = 2 * hLen + 2 * vLen;
+			    var foundAnyCell = false;
+			    
+			    d3.range(numCells).map(function(d) {
+				var x = 0, y = 0;
+				if (d < radius) {
+				    x = d - radius;
+				    y = -radius;
+				} else if (d < hLen + vLen) {
+				    x = -radius;
+				    y = d - hLen - radius;
+				} else if (d < hLen + vLen * 2) {
+				    x = radius;
+				    y = d - hLen - radius;
+				} else {
+				    x = d - radius;
+				    y = radius;
+				}
+				return [center[0] + x, center[1] + y];
+			    }).forEach(function(coord) {
+				if (index[to1D(coord)] !== undefined) {
+				    foundAnyCell = true;
+				    result = index[to1D(coord)].filter(function(polygon) {
+					return d3.geom.polygon(polygon.__data__).contains(point);
+				    });
+				}
+			    });
+			    if (!!result || !foundAnyCell) {
+				return result;
+			    }
+			    return searchInCircles(radius + 1);
+			};
+
+			var result = [];
+			if (index[to1D(center)] !== undefined) {
+			    result = index[to1D(center)].filter(function(polygon) {
+				return d3.geom.polygon(polygon.__data__).contains(point);
+			    });
+			}
+			if (!!result) {
+			    return result;
+			}
+			return searchInCircles(1);
+		    }
+		}
+
 		var existingVertices = d3.set();
 		var verticesData = d3.range(settings.polygonCount).map(function() {
 		    var vertex;
@@ -116,26 +191,25 @@
 		;
 		var path = svg.append('g').selectAll('path');
 		
-		path = path.data(voronoi(verticesData), polygon);
+		path = path.data(voronoi(verticesData), polygonIdFunc);
 		path.exit().remove();
 		path.enter()
 		    .append('path')
-		    .attr("d", polygon)
+		    .attr("d", polygonIdFunc)
 		    .attr("c", function(d, i) { return i % 8; })
 		    .style("fill", function(d, i) { return colors[i % 8]; });
 		path.order();
 
-		function polygon(d) {
+		function polygonIdFunc(d) {
 		    return "M" + d.join("L") + "Z";
 		}
 
+		var indexFunc = buildIndex(path);
 		return function(point) {
 		    /** Animates a color change on every polygon that contains
 			one of the given points. */
-		    path
-			.filter(function(d, i) {
-			    return d3.geom.polygon(d).contains(point);
-			})
+		    var poly = indexFunc(point)
+		    d3.selectAll(poly)
 			.transition()
 			.duration(settings.animationDuration)
 			.styleTween(
