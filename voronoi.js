@@ -261,7 +261,6 @@
 	    }
 
 	    function toVoronoiCoord(position) {
-		console.log(position);
 		function toVoronoiCoordAtPosition(canvasPoint) {
 		    return [
 			voronoiHMargin + position * voronoiCharDimension + canvasPoint[0] * voronoiPixel,
@@ -269,16 +268,6 @@
 		    ];
 		}
 		return toVoronoiCoordAtPosition;
-	    }
-	    function drawCircleAtPoints(points) {
-		d3.select('svg').selectAll('circle')
-		    .data(points)
-		    .enter().append('circle')
-		    .attr('cx', function(d) { return d[0]; })
-		    .attr('cy', function(d) { return d[1]; })
-		    .attr('r', 1)
-		    .attr('fill', 'transparent')
-		    .attr('stroke', 'blue');
 	    }
 	    var fillPolygonAtPoint = initVoronoiRect();
 	    var canvas = initCanvas($('canvas#raster'));
