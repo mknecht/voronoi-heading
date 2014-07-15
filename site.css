@@ -1,10 +1,44 @@
 canvas {
-    border: solid navy 1px;
+    border: solid blue 4px;
     height: 20px;
     width: 20px;
 }
 
+div.input {
+    margin-left: 20%;
+    margin-right: 20%;
+}
+
+div.input input[type=text] {
+    font-size: 1.8em;
+    height: 2em;
+}
 
 div#voronoi {
-    margin: 2em 0em 2em 0em;
+    margin: 1em 0em 2em 0em;
+}
+
+h2 {
+    font-size: 100%;
+    font-weight: bold;
+}
+
+.container {
+    float:right;
+    position:relative;
+    right:50%;
+}
+.inner-container {
+    float:left;
+    position:relative;
+    left:50%;
+}
+
+ul.square {  
+    list-style-type: square;              
+    width:300px;
+}
+
+div.expl {
+    margin: 2em 10em;
 }

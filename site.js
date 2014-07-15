@@ -1,9 +1,10 @@
 (function(w) {
     "use strict";
+    $(document).foundation();
     $(function() {
 	w.voronoi.init({
-	    animationDuration: 3000,
-	    polygonCount: 8000,
+	    animationDuration: 4000,
+	    polygonCount: 6000,
 	    voronoiHeight: 100
 	});
     });

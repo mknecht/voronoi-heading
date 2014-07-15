@@ -3,7 +3,7 @@
     w.voronoi = {
 	init: function(settings) {
 	    var $w = $(w);
-	    var canvasDimensions = 20;
+	    var canvasDimensions = 30;
 	    var voronoiHeight = settings.voronoiHeight;
 	    var voronoiVMargin = (voronoiHeight / 10);
 	    var voronoiEffectiveHeight = voronoiHeight - 2 * voronoiVMargin;
@@ -61,9 +61,9 @@
 		    .attr('width', dimensions)
 		    .attr('height', dimensions);
 		var ctx = $canvas[0].getContext('2d');
-		ctx.font = '15pt bold sans-serif';
+		ctx.font = '23pt bold sans-serif';
 		return {
-		    drawCharacter: function(c) { ctx.fillText(c, 0, 15); },
+		    drawCharacter: function(c) { ctx.fillText(c, 0, 23); },
 		    clear: function() { ctx.clearRect(0, 0, dimensions, dimensions); }
 		}
 	    };

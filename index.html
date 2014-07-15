@@ -3,19 +3,38 @@
   <head>
     <meta charset="utf-8">
     <title>Newtonian Letters</title>
-    <link rel="stylesheet" type="text/css" media="screen" href="lib/normalize.css"/>
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/foundation.css">
     <link rel="stylesheet" type="text/css" media="screen" href="site.css"/>
-    <script src="lib/jquery-2.1.1.min.js"></script>
-    <script src="lib/d3.v3.min.js"></script>
+
+    <script src="js/vendor/modernizr.js"></script>
+    <script src="js/vendor/jquery.js"></script>
+    <script src="js/vendor/d3.v3.min.js"></script>
+    <script src="js/foundation.min.js"></script>
     <script src="voronoi.js"></script>
     <script src="site.js"></script>
   </head>
-  <body>
-    <div>
-      <input type="text"></input>
-      <canvas id="raster"></canvas>
-    </div>
+  <body style="text-align: center">
+    <h1 class="subheader">Voronoi-MixBit Headings</h1>
+    <div class="input"><input type="text" placeholder="Type your heading …"></input></div>
+    <div><canvas id="raster"></canvas></div>
     <div id="voronoi"></div>
-    <div>Number of characters: <span id="numchars">unknown</div>
+    <div class="expl">
+      <h2>How does it work?</h2>
+      <p>Every time you type a character …</p>
+      <p>
+	<div class="container">
+	  <div class="inner-container">
+	    <ol class="square">
+	      <li>it gets rendered on the blue bordered canvas.</li>
+	      <li>the resulting picture gets rastered.</li>
+	      <li>the character's position determines the target square in the diagram.</li>
+	      <li>for each non-white pixel in the canvas, the corresponding polygon in the target square.</li>
+	      <li>the polygon is animated.</li>
+	    </ol>
+	  </div>
+	</div>
+      </p>
+    </div>
   </body>
 </html>
