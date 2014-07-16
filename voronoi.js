@@ -108,50 +108,60 @@
 			var center = rasterCoord(point);
 
 			function searchInCircles(radius) {
-			    var result = [];
+			    var foundAnyCell;
 			    var hLen = radius * 2 + 1;
 			    var vLen = radius * 2 - 1;
 			    var numCells = 2 * hLen + 2 * vLen;
-			    var foundAnyCell = false;
-			    
-			    d3.range(numCells).map(function(d) {
+			    var polygonlists = d3.range(numCells).map(function(d) {
 				var x = 0, y = 0;
-				if (d < radius) {
+				if (d < hLen) {
 				    x = d - radius;
 				    y = -radius;
 				} else if (d < hLen + vLen) {
 				    x = -radius;
-				    y = d - hLen - radius;
+				    y = d - (hLen + radius) + 1;
 				} else if (d < hLen + vLen * 2) {
 				    x = radius;
-				    y = d - hLen - radius;
+				    y = d - (hLen + vLen + radius) + 1;
 				} else {
-				    x = d - radius;
+				    x = d - (hLen + vLen * 2 + radius);
 				    y = radius;
 				}
 				return [center[0] + x, center[1] + y];
-			    }).forEach(function(coord) {
-				if (index[to1D(coord)] !== undefined) {
-				    foundAnyCell = true;
-				    result = index[to1D(coord)].filter(function(polygon) {
-					return d3.geom.polygon(polygon.__data__).contains(point);
-				    });
-				}
+			    }).map(function(coord) {
+				return index[to1D(coord)];
+			    }).filter(function(polygonlist) {
+				return polygonlist !== undefined;
 			    });
-			    if (!!result || !foundAnyCell) {
-				return result;
+			    foundAnyCell = polygonlists.length > 0;
+			    result = polygonlists.map(function(polygonlist) {
+				return polygonlist.filter(function(polygon) {
+				    return d3.geom.polygon(polygon.__data__).contains(point);
+				});
+			    }).filter(function(polygonlist) {
+				return polygonlist.length !== 0;
+			    });
+			    if (!foundAnyCell) {
+				return [];
+			    }
+			    if (result.length > 0) {
+				return result[0];
 			    }
 			    return searchInCircles(radius + 1);
 			};
 
-			var result = [];
-			if (index[to1D(center)] !== undefined) {
-			    result = index[to1D(center)].filter(function(polygon) {
-				return d3.geom.polygon(polygon.__data__).contains(point);
+			var result = [index[to1D(center)]]
+			    .filter(function(polygonlist) {
+				return polygonlist !== undefined
+			    }).map(function(polygonlist) {
+				return polygonlist.filter(function(polygon) {
+				    return d3.geom.polygon(polygon.__data__).contains(point);
+				});
+			    }).filter(function(polygonlist) {
+				return polygonlist.length > 0;
 			    });
-			}
-			if (!!result) {
-			    return result;
+			if (result.length > 0) {
+			    return result[0];
 			}
 			return searchInCircles(1);
 		    }
