@@ -1,7 +1,13 @@
-canvas {
+canvas#raster {
     border: solid blue 4px;
     height: 20px;
     width: 20px;
+}
+
+canvas#polygonmap {
+    border-style: solid none solid none;
+    border-width: 20px;
+    border-color: green;
 }
 
 div.input {

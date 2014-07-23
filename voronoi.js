@@ -3,7 +3,7 @@
     w.voronoi = {
 	init: function(settings) {
 	    var $w = $(w);
-	    var canvasDimensions = 30;
+	    var canvasDimensions = 60;
 	    var voronoiWidth = $w.width();
 	    var voronoiHeight = settings.voronoiHeight;
 	    var voronoiVMargin = (voronoiHeight / 10);
@@ -61,10 +61,11 @@
 		    .height(dimensions)
 		    .attr('width', dimensions)
 		    .attr('height', dimensions);
+		var baseline = 3 * ((canvasDimensions / 4) | 0);
 		var ctx = $canvas[0].getContext('2d');
-		ctx.font = '23pt bold sans-serif';
+		ctx.font = '' + baseline + 'pt bold sans-serif';
 		return {
-		    drawCharacter: function(c) { ctx.fillText(c, 0, 23); },
+		    drawCharacter: function(c) { ctx.fillText(c, 0, baseline); },
 		    clear: function() { ctx.clearRect(0, 0, dimensions, dimensions); }
 		}
 	    };
@@ -244,6 +245,11 @@
 				y = radius;
 			    }
 			    return [center[0] + x, center[1] + y];
+			}).filter(function(coord) {
+			    return (
+				coord[0] >= 0 && coord[0] < cellsPerRow
+				&& coord[1] >= 0 && coord[1] < cellsPerCol
+			    );
 			}).map(function(coord) {
 			    return index[to1D(coord)];
 			}).filter(function(polygonlist) {
@@ -285,20 +291,83 @@
 		}
 	    }
 
+	    function initCanvasMappingFinder(polygons) {
+		var polyobj;
+		var indexedPolygons = [undefined];
+		$('canvas#polygonmap')
+		    .width(voronoiWidth)
+		    .height(voronoiHeight)
+		    .attr("height", voronoiHeight)
+		    .attr("width", voronoiWidth)
+		    .show();
+		var gridFinder = initGridFinder(polygons);
+		function color2index(color) {
+		    return (
+			((color[0] ^ 255) << 0)
+			    + (((color[1] ^ 255) & 255) << 8)
+			    + (((color[2] ^ 255) & 255) << 16)
+			    + (((color[3] ^ 255) & 255) << 24)
+		    );
+		}
+		function index2color(index) {
+		    return [
+			((index >> 0) ^ 255)  & 255,
+			((index >> 8) ^ 255) & 255,
+			((index >> 16) ^ 255) & 255,
+			((index >> 24) ^ 255) & 255
+		    ];
+		}
+
+		var ctx = $('canvas#polygonmap')[0].getContext("2d");
+		var image_data = ctx.createImageData(1, 1);
+		d3.range(5, voronoiWidth - 5).forEach(function(x) {
+		    d3.range(5, voronoiHeight - 5).forEach(function(y) {
+			var idx;
+			var polys = gridFinder([x, y]);
+			if (polys.length === 0) {
+			    idx = 0;
+			} else {
+			    polyobj = d3.select(polys[0])
+			    // Voronoi polygons are non-overlapping.
+			    if (polyobj.attr("ci") === null) {
+				polyobj.attr("ci", indexedPolygons.length);
+			    }
+			    var idx = polyobj.attr("ci");
+			    indexedPolygons[idx] = polys[0];
+			}
+			var color = index2color(idx);
+			image_data.data[0] = color[0];
+			image_data.data[1] = color[1];
+			image_data.data[2] = color[2];
+			image_data.data[3] = color[3];
+			ctx.putImageData(image_data, x, y);
+		    });
+		});
+		return function(point) {
+		    var color = ctx.getImageData(point[0], point[1], 1, 1).data;
+		    var idx = color2index(color);
+		    return [indexedPolygons[idx]];
+		};
+	    }
+
+	    function setFinder(newFinder) {
+		finder[0] = voronoiOps.initFinder(
+		    (newFinder == 'mappingcanvas') ? initCanvasMappingFinder : initGridFinder);
+	    };
+
 	    var voronoiOps = initVoronoiRect();
-	    var indexFunc = voronoiOps.initFinder(initGridFinder);
+	    var finder = [];
 	    var canvas = initCanvas($('canvas#raster'));
 	    initTextfield(
 		function() { canvas.clear(); },
 		function(c) { 
 		    canvas.clear();
 		    canvas.drawCharacter(c);
-		    rasterCanvas().map(toVoronoiCoord($('input').getCursorPosition())).forEach(function(point) { voronoiOps.fillPolygon(indexFunc(point)); });
+		    rasterCanvas().map(toVoronoiCoord($('input').getCursorPosition())).forEach(function(point) { voronoiOps.fillPolygon(finder[0](point)); });
 		}
 	    );
-	    return function(newFinder) {
-		console.log("Changing finder not yet supported");
-	    };
+	    setFinder(settings.finder);
+	    return setFinder;
 	}
     }
 })(window, jQuery, d3);
