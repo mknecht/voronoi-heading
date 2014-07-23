@@ -17,10 +17,14 @@
   </head>
   <body style="text-align: center">
     <h1 class="subheader">Voronoi-MixBit Headings</h1>
-    <div class="input"><input type="text" placeholder="Type your heading …"></input></div>
+    <div class="input"><input type="text" id="headingtext" placeholder="Type your heading …"></input></div>
     <div><canvas id="raster"></canvas></div>
     <div id="voronoi"></div>
-    <div class="expl">
+    <div>
+      <input type="radio" name="find-algorithm" id="find-by-grid" value="grid" checked/><label for="find-by-grid">using grid</label>
+      <input type="radio" name="find-algorithm" id="find-by-mappingcanvas" value="mappingcanvas" /><label for="find-by-mappingcanvas">using canvas mapping with color</label>
+    </div>
+    <div class="expl" id="expl-grid">
       <h2>How does it work?</h2>
       <p>Every time you type a character …</p>
       <p>
@@ -37,6 +41,7 @@
 	</div>
       </p>
     </div>
+    <div><canvas id="polygonmap"></canvas></div>
     <a href="https://github.com/mknecht/voronoi-heading"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/365986a132ccd6a44c23a9169022c0b5c890c387/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png"></a>
   </body>
 </html>

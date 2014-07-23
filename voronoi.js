@@ -83,90 +83,6 @@
 		    'rgb(77,146,33)'
 		]
 
-		function buildIndex(polygons) {
-		    var index = [];
-		    var rasterDim = ((voronoiWidth * voronoiHeight) / settings.polygonCount) | 0;
-		    var cellsPerRow = Math.ceil(voronoiWidth / rasterDim);
-		    var cellsPerCol = Math.ceil(voronoiHeight / rasterDim);
-		    function to1D(coord) {
-			return coord[0] + coord[1] * cellsPerRow
-		    }
-		    function rasterCoord(point) {
-			return [
-			    (Math.min(cellsPerRow, Math.max(0, (point[0] / rasterDim) | 0))),
-			    (Math.min(cellsPerCol, Math.max(0, (point[1] / rasterDim) | 0)))
-			];
-		    }
-		    polygons[0].forEach(function(polygon) {
-			var arrayIdx = to1D(rasterCoord(polygon.__data__.point));
-			if (index[arrayIdx] === undefined) {
-			    index[arrayIdx] = [];
-			}
-			index[arrayIdx].push(polygon);
-		    });
-		    return function(point) {
-			var center = rasterCoord(point);
-
-			function searchInCircles(radius) {
-			    var foundAnyCell;
-			    var hLen = radius * 2 + 1;
-			    var vLen = radius * 2 - 1;
-			    var numCells = 2 * hLen + 2 * vLen;
-			    var polygonlists = d3.range(numCells).map(function(d) {
-				var x = 0, y = 0;
-				if (d < hLen) {
-				    x = d - radius;
-				    y = -radius;
-				} else if (d < hLen + vLen) {
-				    x = -radius;
-				    y = d - (hLen + radius) + 1;
-				} else if (d < hLen + vLen * 2) {
-				    x = radius;
-				    y = d - (hLen + vLen + radius) + 1;
-				} else {
-				    x = d - (hLen + vLen * 2 + radius);
-				    y = radius;
-				}
-				return [center[0] + x, center[1] + y];
-			    }).map(function(coord) {
-				return index[to1D(coord)];
-			    }).filter(function(polygonlist) {
-				return polygonlist !== undefined;
-			    });
-			    foundAnyCell = polygonlists.length > 0;
-			    result = polygonlists.map(function(polygonlist) {
-				return polygonlist.filter(function(polygon) {
-				    return d3.geom.polygon(polygon.__data__).contains(point);
-				});
-			    }).filter(function(polygonlist) {
-				return polygonlist.length !== 0;
-			    });
-			    if (!foundAnyCell) {
-				return [];
-			    }
-			    if (result.length > 0) {
-				return result[0];
-			    }
-			    return searchInCircles(radius + 1);
-			};
-
-			var result = [index[to1D(center)]]
-			    .filter(function(polygonlist) {
-				return polygonlist !== undefined
-			    }).map(function(polygonlist) {
-				return polygonlist.filter(function(polygon) {
-				    return d3.geom.polygon(polygon.__data__).contains(point);
-				});
-			    }).filter(function(polygonlist) {
-				return polygonlist.length > 0;
-			    });
-			if (result.length > 0) {
-			    return result[0];
-			}
-			return searchInCircles(1);
-		    }
-		}
-
 		var existingVertices = d3.set();
 		var verticesData = d3.range(settings.polygonCount).map(function() {
 		    var vertex;
@@ -214,30 +130,32 @@
 		    return "M" + d.join("L") + "Z";
 		}
 
-		var indexFunc = buildIndex(path);
-		return function(point) {
-		    /** Animates a color change on every polygon that contains
-			one of the given points. */
-		    var poly = indexFunc(point)
-		    d3.selectAll(poly)
-			.transition()
-			.duration(settings.animationDuration)
-			.styleTween(
-			    "fill",
-			    function(d) {
-				return d3.interpolateRgb(
-				    "black",
-				    // We don't return to the original color.
-				    // We'd need to store it — one animation
-				    // could be started in the middle of another.
-				    // So, I don't care.
-				    colors[parseInt(Math.random() * colors.length)]
-				);
-			    }
-			);
+		return {
+		    fillPolygon: function(poly) {
+			/** Animates a color change on every polygon that contains
+			    one of the given points. */
+			d3.selectAll(poly)
+			    .transition()
+			    .duration(settings.animationDuration)
+			    .styleTween(
+				"fill",
+				function(d) {
+				    return d3.interpolateRgb(
+					"black",
+					// We don't return to the original color.
+					// We'd need to store it — one animation
+					// could be started in the middle of another.
+					// So, I don't care.
+					colors[parseInt(Math.random() * colors.length)]
+				    );
+				}
+			    );
+		    },
+		    initFinder: function(initFunc) {
+			return initFunc(path);
+		    }
 		}
 	    }
-
 	    function initTextfield(resetFunc, newCharacterFunc) {
 		$('input')
 		    .attr('maxLength', voronoiChars)
@@ -279,17 +197,108 @@
 		}
 		return toVoronoiCoordAtPosition;
 	    }
-	    var fillPolygonAtPoint = initVoronoiRect();
+
+	    function initGridFinder(polygons) {
+		var index = [];
+		var rasterDim = ((voronoiWidth * voronoiHeight) / settings.polygonCount) | 0;
+		var cellsPerRow = Math.ceil(voronoiWidth / rasterDim);
+		var cellsPerCol = Math.ceil(voronoiHeight / rasterDim);
+		function to1D(coord) {
+		    return coord[0] + coord[1] * cellsPerRow
+		}
+		function rasterCoord(point) {
+		    return [
+			(Math.min(cellsPerRow, Math.max(0, (point[0] / rasterDim) | 0))),
+			(Math.min(cellsPerCol, Math.max(0, (point[1] / rasterDim) | 0)))
+		    ];
+		}
+		polygons[0].forEach(function(polygon) {
+		    var arrayIdx = to1D(rasterCoord(polygon.__data__.point));
+		    if (index[arrayIdx] === undefined) {
+			index[arrayIdx] = [];
+		    }
+		    index[arrayIdx].push(polygon);
+		});
+
+		return function(point) {
+		    var center = rasterCoord(point);
+
+		    function searchInCircles(radius) {
+			var foundAnyCell;
+			var hLen = radius * 2 + 1;
+			var vLen = radius * 2 - 1;
+			var numCells = 2 * hLen + 2 * vLen;
+			var polygonlists = d3.range(numCells).map(function(d) {
+			    var x = 0, y = 0;
+			    if (d < hLen) {
+				x = d - radius;
+				y = -radius;
+			    } else if (d < hLen + vLen) {
+				x = -radius;
+				y = d - (hLen + radius) + 1;
+			    } else if (d < hLen + vLen * 2) {
+				x = radius;
+				y = d - (hLen + vLen + radius) + 1;
+			    } else {
+				x = d - (hLen + vLen * 2 + radius);
+				y = radius;
+			    }
+			    return [center[0] + x, center[1] + y];
+			}).map(function(coord) {
+			    return index[to1D(coord)];
+			}).filter(function(polygonlist) {
+			    return polygonlist !== undefined;
+			});
+			foundAnyCell = polygonlists.length > 0;
+			result = polygonlists.map(function(polygonlist) {
+			    return polygonlist.filter(function(polygon) {
+				return d3.geom.polygon(polygon.__data__).contains(point);
+			    });
+			}).filter(function(polygonlist) {
+			    return polygonlist.length !== 0;
+			});
+			if (!foundAnyCell) {
+			    return [];
+			}
+			if (result.length > 0) {
+			    return result[0];
+			}
+			return searchInCircles(radius + 1);
+		    };
+
+		    var result = [index[to1D(center)]]
+			.filter(function(polygonlist) {
+			    return polygonlist !== undefined
+			}).map(function(polygonlist) {
+			    return polygonlist.filter(function(polygon) {
+				return d3.geom.polygon(polygon.__data__).contains(point);
+			    });
+			}).filter(function(polygonlist) {
+			    return polygonlist.length > 0;
+			});
+
+		    if (result.length > 0) {
+			return result[0];
+		    } else {
+			return searchInCircles(1);
+		    }
+		}
+	    }
+
+	    var voronoiOps = initVoronoiRect();
+	    var indexFunc = voronoiOps.initFinder(initGridFinder);
 	    var canvas = initCanvas($('canvas#raster'));
 	    initTextfield(
 		function() { canvas.clear(); },
 		function(c) { 
 		    canvas.clear();
 		    canvas.drawCharacter(c);
-		    rasterCanvas().map(toVoronoiCoord($('input').getCursorPosition())).forEach(fillPolygonAtPoint);
+		    rasterCanvas().map(toVoronoiCoord($('input').getCursorPosition())).forEach(function(point) { voronoiOps.fillPolygon(indexFunc(point)); });
 		}
 	    );
-	    $('input').focus();
+	    return function(newFinder) {
+		console.log("Changing finder not yet supported");
+	    };
 	}
     }
 })(window, jQuery, d3);
